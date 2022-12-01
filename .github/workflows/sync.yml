@@ -1,0 +1,60 @@
+name: Sync
+
+on:
+  workflow_call:
+    inputs:
+      monorepo:
+        description: "Monorepo {organization}/{repo} to checkout from"
+        required: true
+        type: string
+      microservices_dir:
+        description: "Directory where microservices are located on parent monorepo"
+        required: false
+        type: string
+        default: "microservices"
+      git_name:
+        description: "A name to show on monorepo commit"
+        required: false
+        type: string
+        default: "DB Bot"
+      git_email:
+        description: "An email to show on monorepo commit"
+        required: false
+        type: string
+        default: "bot@db.com.br"
+    secrets:
+      ACCESS_TOKEN:
+        required: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.monorepo }}
+          ref: stage
+          token: ${{ secrets.ACCESS_TOKEN }}
+          submodules: 'recursive'
+      - name: Set environment variables
+        run: |
+          echo "TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+          echo "REPO=${GITHUB_REPOSITORY/[^\/]*\//}" >> $GITHUB_ENV
+          cat $GITHUB_ENV
+      - name: Checkout branch
+        run: |
+          cd ${{ inputs.microservices_dir }}/${{ env.REPO }}
+          git checkout $GITHUB_REF
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "${{ inputs.git_name }}"
+          git config --global user.email "${{ inputs.git_email }}"
+          git add ${{ inputs.microservices_dir }}/${{ env.REPO }}
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Release: ${{ env.REPO }} [${{ env.TAG }}]"
+            git push origin stage
+          fi
+          git tag ${{ env.REPO }}@${{ env.TAG }}
+          git push --tag
+
