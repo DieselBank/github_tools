@@ -7,8 +7,8 @@ on:
         description: "Monorepo {organization}/{repo} to checkout from"
         required: true
         type: string
-      microservices_dir:
-        description: "Directory where microservices are located on parent monorepo"
+      subrepo_dir:
+        description: "Directory where subrepo is located, defaults to `microservices`"
         required: false
         type: string
         default: "microservices"
@@ -44,13 +44,13 @@ jobs:
           cat $GITHUB_ENV
       - name: Checkout branch
         run: |
-          cd ${{ inputs.microservices_dir }}/${{ env.REPO }}
+          cd ${{ inputs.subrepo_dir }}/${{ env.REPO }}
           git checkout $GITHUB_REF
       - name: Commit and push changes
         run: |
           git config --global user.name "${{ inputs.git_name }}"
           git config --global user.email "${{ inputs.git_email }}"
-          git add ${{ inputs.microservices_dir }}/${{ env.REPO }}
+          git add ${{ inputs.subrepo_dir }}/${{ env.REPO }}
           if ! git diff-index --quiet HEAD; then
             git commit -m "Release: ${{ env.REPO }} [${{ env.TAG }}]"
             git push origin stage
