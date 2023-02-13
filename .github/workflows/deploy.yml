@@ -1,0 +1,119 @@
+name: Sync
+
+on:
+  workflow_call:
+    inputs:
+	  aws_region:
+		description: "AWS region to deploy"
+		required: true
+		type: string
+	  template_task_definition_file:
+		description: "Task Definition file to fill"
+		required: false
+		type: string
+		default: "task-definition.json"
+	  release_task_definition_file:
+		description: "Task Definition file name to release"
+		required: false
+		type: string
+		default: "release-task-definition.json"
+      company:
+        description: "Company name"
+        required: false
+        type: string
+		default: "dieselbank"
+      envronment:
+        description: "Environment to deploy to"
+        required: true
+        type: string
+    secrets:
+      ACCESS_TOKEN:
+        required: true
+	  AWS_ACCESS_KEY_ID:
+		required: true
+	  AWS_SECRET_ACCESS_KEY:
+		required: true
+	  AWS_SESSION_TOKEN:
+		required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      project_name: ${{ steps.variables.outputs.PROJECT }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          submodules: 'recursive'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set environmental variables
+        id: variables
+        run: |Feat: subscription loop.
+          TAG=${GITHUB_REF/refs\/tags\//}
+          PROJECT=${TAG/@**/}
+          echo "PROJECT=${TAG/@**/}" >> $GITHUB_ENV
+          echo "PROJECT=${TAG/@**/}" >> $GITHUB_OUTPUT
+          echo "VERSION=${TAG/**@/}" >> $GITHUB_ENV
+          echo "IMAGE=${{ steps.login-ecr.outputs.registry }}/${{ inputs.company }}/${{ inputs.environment }}/${TAG/@/:}" >> $GITHUB_ENV
+
+      - name: Docker [build image]
+        run: docker compose build ${{ env.PROJECT }}
+
+      - name: Docker [Push image to Amazon ECR]
+        run: docker push ${{ env.IMAGE }}
+
+      # UPDATE TASKS
+      - name: Fills Task definition with ECR image ID
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: microservices/${{ env.PROJECT }}/${{ inputs.environment }}-${{ inputs.template_task_definition_file }}
+          container-name: ${{ env.PROJECT }}
+          image: ${{ env.IMAGE }}
+
+      - name: Rename Task definition
+        run: mv ${{ steps.task-def.outputs.task-definition }} ${{ inputs.release_task_definition_file }}
+
+      - name: Upload artifact [task definition]
+        uses: actions/upload-artifact@v3
+        with:
+          name: task-definition
+          path: ${{ inputs.release_task_definition_file }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [ build ]
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Download artifact [task definition]
+        uses: actions/download-artifact@v3
+        with:
+          name: task-definition
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ inputs.release_task_definition_file }}
+          service: service-${{ needs.build.outputs.project_name }}
+          cluster: ${{ inputs.environment }}/${{ needs.build.outputs.project_name }}
+          wait-for-service-stability: true
+
