@@ -3,25 +3,25 @@ name: Deploy
 on:
   workflow_call:
     inputs:
-	  aws_region:
-		description: "AWS region to deploy"
-		required: true
-		type: string
-	  template_task_definition_file:
-		description: "Task Definition file to fill"
-		required: false
-		type: string
-		default: "task-definition.json"
-	  release_task_definition_file:
-		description: "Task Definition file name to release"
-		required: false
-		type: string
-		default: "release-task-definition.json"
+      aws_region:
+        description: "AWS region to deploy"
+        required: true
+        type: string
+      template_task_definition_file:
+        description: "Task Definition file to fill"
+        required: false
+        type: string
+        default: "task-definition.json"
+      release_task_definition_file:
+        description: "Task Definition file name to release"
+        required: false
+        type: string
+        default: "release-task-definition.json"
       company:
         description: "Company name"
         required: false
         type: string
-		default: "dieselbank"
+        default: "dieselbank"
       environment:
         description: "Environment to deploy to"
         required: true
@@ -29,12 +29,12 @@ on:
     secrets:
       ACCESS_TOKEN:
         required: true
-	  AWS_ACCESS_KEY_ID:
-		required: true
-	  AWS_SECRET_ACCESS_KEY:
-		required: true
-	  AWS_SESSION_TOKEN:
-		required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_SESSION_TOKEN:
+        required: true
 
 jobs:
   build:
