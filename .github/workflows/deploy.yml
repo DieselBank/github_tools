@@ -1,4 +1,4 @@
-name: Sync
+name: Deploy
 
 on:
   workflow_call:
@@ -22,7 +22,7 @@ on:
         required: false
         type: string
 		default: "dieselbank"
-      envronment:
+      environment:
         description: "Environment to deploy to"
         required: true
         type: string
