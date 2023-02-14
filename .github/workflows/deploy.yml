@@ -113,7 +113,7 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ inputs.release_task_definition_file }}
-          service: service-${{ needs.build.outputs.project_name }}
+          service: service-${{ inputs.environment }}-${{ needs.build.outputs.project_name }}
           cluster: ${{ inputs.environment }}-${{ needs.build.outputs.project_name }}
           wait-for-service-stability: true
 
