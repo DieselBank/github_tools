@@ -114,6 +114,6 @@ jobs:
         with:
           task-definition: ${{ inputs.release_task_definition_file }}
           service: service-${{ needs.build.outputs.project_name }}
-          cluster: ${{ inputs.environment }}/${{ needs.build.outputs.project_name }}
+          cluster: ${{ inputs.environment }}-${{ needs.build.outputs.project_name }}
           wait-for-service-stability: true
 
