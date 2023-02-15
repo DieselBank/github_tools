@@ -7,16 +7,6 @@ on:
         description: "AWS region to deploy"
         required: true
         type: string
-      template_task_definition_file:
-        description: "Task Definition file to fill"
-        required: false
-        type: string
-        default: "task-definition.json"
-      release_task_definition_file:
-        description: "Task Definition file name to release"
-        required: false
-        type: string
-        default: "release-task-definition.json"
       company:
         description: "Company name"
         required: false
@@ -80,18 +70,18 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: microservices/${{ env.PROJECT }}/${{ inputs.environment }}-${{ inputs.template_task_definition_file }}
+          task-definition: microservices/${{ env.PROJECT }}/task-definition.${{ inputs.environment }}.json
           container-name: ${{ env.PROJECT }}
           image: ${{ env.IMAGE }}
 
       - name: Rename Task definition
-        run: mv ${{ steps.task-def.outputs.task-definition }} ${{ inputs.release_task_definition_file }}
+        run: mv ${{ steps.task-def.outputs.task-definition }} task-definition.json
 
       - name: Upload artifact [task definition]
         uses: actions/upload-artifact@v3
         with:
           name: task-definition
-          path: ${{ inputs.release_task_definition_file }}
+          path: task-definition.json
 
   deploy:
     runs-on: ubuntu-latest
@@ -112,7 +102,7 @@ jobs:
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
-          task-definition: ${{ inputs.release_task_definition_file }}
+          task-definition: task-definition.json
           service: service-${{ inputs.environment }}-${{ needs.build.outputs.project_name }}
           cluster: ${{ inputs.environment }}-${{ needs.build.outputs.project_name }}
           wait-for-service-stability: true
