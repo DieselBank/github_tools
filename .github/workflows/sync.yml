@@ -7,6 +7,11 @@ on:
         description: "Monorepo {organization}/{repo} to checkout from"
         required: true
         type: string
+      monorepo_branch:
+        description: "Branch to merge to"
+        required: false
+        type: string
+        default: "stage"
       subrepo_dir:
         description: "Directory where subrepo is located, defaults to `microservices`"
         required: false
@@ -34,7 +39,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ inputs.monorepo }}
-          ref: stage
+          ref: ${{ inputs.monorepo_branch }}
           token: ${{ secrets.ACCESS_TOKEN }}
           submodules: 'recursive'
       - name: Set environment variables
@@ -53,7 +58,7 @@ jobs:
           git add ${{ inputs.subrepo_dir }}/${{ env.REPO }}
           if ! git diff-index --quiet HEAD; then
             git commit -m "Release: ${{ env.REPO }} [${{ env.TAG }}]"
-            git push origin stage
+            git push origin ${{ inputs.monorepo_branch }}
           fi
           git tag ${{ env.REPO }}@${{ env.TAG }}
           git push --tag
