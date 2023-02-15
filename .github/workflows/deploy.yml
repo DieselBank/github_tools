@@ -29,7 +29,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     outputs:
       project_name: ${{ steps.variables.outputs.PROJECT }}
     steps:
@@ -86,6 +85,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     needs: [ build ]
     steps:
       - name: Configure AWS credentials
