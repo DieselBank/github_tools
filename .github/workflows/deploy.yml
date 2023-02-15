@@ -16,6 +16,11 @@ on:
         description: "Environment to deploy to"
         required: true
         type: string
+      await_deploy:
+        description: "Waits for deploy stability"
+        required: false
+        type: boolean
+        default: false
     secrets:
       ACCESS_TOKEN:
         required: true
@@ -106,5 +111,5 @@ jobs:
           task-definition: task-definition.json
           service: service-${{ inputs.environment }}-${{ needs.build.outputs.project_name }}
           cluster: ${{ inputs.environment }}-${{ needs.build.outputs.project_name }}
-          wait-for-service-stability: true
+          wait-for-service-stability: ${{ inputs.await_deploy }}
 
