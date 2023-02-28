@@ -68,7 +68,9 @@ jobs:
           echo "VERSION=${TAG/**@/}" >> $GITHUB_ENV
           echo "IMAGE=${{ steps.login-ecr.outputs.registry }}/${{ inputs.company }}/${{ inputs.environment }}/${TAG/@/:}" >> $GITHUB_ENV
 
-      - name: Docker [build image]
+      - name: Docker [try build specific image]
+        id: build-specific-image
+        continue-on-error: true
         run: > 
           docker compose 
           --env-file=${{ inputs.projects_directory }}/${{ env.PROJECT }}/.env 
@@ -76,6 +78,16 @@ jobs:
           --build-arg=ENV=${{ inputs.environment }} 
           --build-arg=PROJECT=${{ env.PROJECT }}
           ${{ env.PROJECT }}
+
+      - name: Docker [build generic image]
+        if: ${{ steps.build-specific-image.conclusion == 'failure' }}
+        run: > 
+          docker compose 
+          --env-file=${{ inputs.projects_directory }}/${{ env.PROJECT }}/.env 
+          build 
+          --build-arg=ENV=${{ inputs.environment }} 
+          --build-arg=PROJECT=${{ env.PROJECT }}
+          build_project
 
       - name: Docker [Push image to Amazon ECR]
         run: docker push ${{ env.IMAGE }}
