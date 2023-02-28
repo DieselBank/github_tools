@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy ECS instance
 
 on:
   workflow_call:
@@ -12,6 +12,10 @@ on:
         required: false
         type: string
         default: "dieselbank"
+      projects_directory:
+        description: "Directory to find services"
+        required: true
+        type: string
       environment:
         description: "Environment to deploy to"
         required: true
@@ -65,7 +69,13 @@ jobs:
           echo "IMAGE=${{ steps.login-ecr.outputs.registry }}/${{ inputs.company }}/${{ inputs.environment }}/${TAG/@/:}" >> $GITHUB_ENV
 
       - name: Docker [build image]
-        run: docker compose --env-file=microservices/${{ env.PROJECT }}/.env build --build-arg=ENV=${{ inputs.environment }} ${{ env.PROJECT }}
+        run: > 
+          docker compose 
+          --env-file=${{ input.projects_directory }}/${{ env.PROJECT }}/.env 
+          build 
+          --build-arg=ENV=${{ inputs.environment }} 
+          --build-arg=PROJECT=${{ env.PROJECT }}
+          ${{ env.PROJECT }}
 
       - name: Docker [Push image to Amazon ECR]
         run: docker push ${{ env.IMAGE }}
@@ -75,7 +85,7 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: microservices/${{ env.PROJECT }}/task-definition.${{ inputs.environment }}.json
+          task-definition: ${{ inputs.projects_directory }}/${{ env.PROJECT }}/task-definition.${{ inputs.environment }}.json
           container-name: ${{ env.PROJECT }}
           image: ${{ env.IMAGE }}
 
