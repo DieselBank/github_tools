@@ -71,7 +71,7 @@ jobs:
       - name: Docker [build image]
         run: > 
           docker compose 
-          --env-file=${{ input.projects_directory }}/${{ env.PROJECT }}/.env 
+          --env-file=${{ inputs.projects_directory }}/${{ env.PROJECT }}/.env 
           build 
           --build-arg=ENV=${{ inputs.environment }} 
           --build-arg=PROJECT=${{ env.PROJECT }}
