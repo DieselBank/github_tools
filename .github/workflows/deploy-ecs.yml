@@ -80,7 +80,7 @@ jobs:
           ${{ env.PROJECT }}
 
       - name: Docker [build generic image]
-        if: ${{ steps.build-specific-image.conclusion == 'failure' }}
+        if: ${{ steps.build-specific-image.outcome == "failure" }}
         run: > 
           docker compose 
           --env-file=${{ inputs.projects_directory }}/${{ env.PROJECT }}/.env 
