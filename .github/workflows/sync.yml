@@ -50,6 +50,8 @@ jobs:
       - name: Checkout branch
         run: |
           cd ${{ inputs.subrepo_dir }}/${{ env.REPO }}
+          pwd
+          ls
           git checkout $GITHUB_REF
       - name: Commit and push changes
         run: |
