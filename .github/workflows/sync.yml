@@ -16,7 +16,7 @@ on:
         description: "Directory where subrepo is located, defaults to `microservices`"
         required: false
         type: string
-        default: "microservices"
+        default: "apps"
       git_name:
         description: "A name to show on monorepo commit"
         required: false
