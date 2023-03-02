@@ -10,4 +10,5 @@ jobs:
     uses: Dieselbank/github_tools/.github/workflows/sync.yml@1.1.0
     with:
       monorepo: DieselBank/umbrella
+      subrepo_dir: .
     secrets: inherit
