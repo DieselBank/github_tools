@@ -1,4 +1,4 @@
-name: Deploy ECS instance
+name: Deploy S3 instance
 
 on:
   workflow_call:
