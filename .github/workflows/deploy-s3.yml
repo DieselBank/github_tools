@@ -1,0 +1,134 @@
+name: Deploy ECS instance
+
+on:
+  workflow_call:
+    inputs:
+      aws_region:
+        description: "AWS region to deploy"
+        required: true
+        type: string
+      company:
+        description: "Company name"
+        required: false
+        type: string
+        default: "dieselbank"
+      projects_directory:
+        description: "Directory to find services"
+        required: true
+        type: string
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        type: string
+      await_deploy:
+        description: "Waits for deploy stability"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      ACCESS_TOKEN:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_SESSION_TOKEN:
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version_name: ${{ steps.variables.outputs.VERSION }}
+      project_name: ${{ steps.variables.outputs.PROJECT }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          submodules: 'recursive'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set environmental variables
+        id: variables
+        run: |
+          TAG=${GITHUB_REF/refs\/tags\//}
+          PROJECT=${TAG/@**/}
+          echo "PROJECT=${TAG/@**/}" >> $GITHUB_ENV
+          echo "PROJECT=${TAG/@**/}" >> $GITHUB_OUTPUT
+          echo "VERSION=${TAG/**@/}" >> $GITHUB_ENV
+          echo "VERSION=${TAG/**@/}" >> $GITHUB_OUTPUT
+          echo "IMAGE=${{ steps.login-ecr.outputs.registry }}/${{ inputs.company }}/${{ inputs.environment }}/${TAG/@/:}" >> $GITHUB_ENV
+
+      - name: Docker [try build specific image]
+        id: build-specific-image
+        continue-on-error: true
+        run: > 
+          docker compose 
+          --env-file=${{ inputs.projects_directory }}/${{ env.PROJECT }}/.env 
+          build 
+          --build-arg=ENV=${{ inputs.environment }} 
+          --build-arg=PROJECT=${{ env.PROJECT }}
+          ${{ env.PROJECT }}
+
+      - name: Docker [build generic image]
+        if: ${{ steps.build-specific-image.outcome == 'failure' }}
+        run: > 
+          docker compose 
+          --env-file=${{ inputs.projects_directory }}/${{ env.PROJECT }}/.env 
+          build 
+          --build-arg=ENV=${{ inputs.environment }} 
+          --build-arg=VERSION=${{ env.VERSION }} 
+          --build-arg=PROJECT=${{ env.PROJECT }}
+          build_project
+
+      - name: Docker [create container]
+        run: echo "CONTAINER=$(docker create ${{ env.IMAGE }})" >> $GITHUB_ENV
+
+      - name: Docker [Copy files]
+        run: docker cp ${{ env.CONTAINER }}:www . 
+
+      - name: Upload artifact [build]
+        uses: actions/upload-artifact@v3
+        with:
+          name: www
+          path: www
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: [ build ]
+    steps:
+      - name: Download artifact [build]
+        uses: actions/download-artifact@v3
+        with:
+          name: www
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ inputs.aws_region }}
+    - name: Set bucket name
+      run: |
+        export PROJECT=${{ needs.build.outputs.project_name }}
+        echo "BUCKET=${PROJECT/_/-}.${{ inputs.environment }}" >> $GITHUB_ENV
+    - name: Deploy static site to S3 bucket
+      run: >
+        aws s3 sync
+        ./www/
+        s3://${{ env.BUCKET }}.com.br/${{ needs.build.outputs.version_name }}/
+        --delete
+        --acl
+        public-read
