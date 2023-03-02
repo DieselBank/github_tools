@@ -50,7 +50,10 @@ jobs:
       - name: Checkout branch
         run: |
           cd ${{ inputs.subrepo_dir }}/${{ env.REPO }}
-          git tag
+          git branch
+          echo "---"
+          git branch -a
+          git fetch
           git checkout $GITHUB_REF
       - name: Commit and push changes
         run: |
