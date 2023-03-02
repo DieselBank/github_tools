@@ -14,8 +14,9 @@ on:
         default: "dieselbank"
       projects_directory:
         description: "Directory to find services"
-        required: true
+        required: false
         type: string
+        default: "apps"
       environment:
         description: "Environment to deploy to"
         required: true
